@@ -97,7 +97,7 @@ function getProjectPath(name) {
 // 列出所有專案
 function listProjects() {
   const config = loadConfig();
-  return config.projects;
+  return Object.entries(config.projects).map(([name, path]) => ({ name, path }));
 }
 
 // 取得配置

@@ -1,0 +1,25 @@
+# Demo Project
+
+Testing LiveDoc image serving.
+
+## Static Images
+
+![PNG](http://localhost:3000/demo/livedoc/static/test.png)
+![JPG](http://localhost:3000/demo/livedoc/static/test.jpg)
+![GIF](http://localhost:3000/demo/livedoc/static/test.gif)
+
+## Dynamic Diagrams
+
+### PlantUML
+![Demo PlantUML](http://localhost:3000/demo/livedoc/dynamic/demo.puml)
+
+### Mermaid
+![Flow Mermaid](http://localhost:3000/demo/livedoc/dynamic/flow.mmd)
+
+## Error Handling
+
+### Invalid PlantUML (should show error image)
+![Error PlantUML](http://localhost:3000/demo/livedoc/dynamic/error.puml)
+
+### Non-existent file (should show error image)
+![Not Found](http://localhost:3000/demo/livedoc/dynamic/notfound.puml)
