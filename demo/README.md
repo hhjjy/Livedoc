@@ -15,11 +15,3 @@ Testing LiveDoc image serving.
 
 ### Mermaid
 ![Flow Mermaid](http://localhost:3000/demo/livedoc/dynamic/flow.mmd)
-
-## Error Handling
-
-### Invalid PlantUML (should show error image)
-![Error PlantUML](http://localhost:3000/demo/livedoc/dynamic/error.puml)
-
-### Non-existent file (should show error image)
-![Not Found](http://localhost:3000/demo/livedoc/dynamic/notfound.puml)
