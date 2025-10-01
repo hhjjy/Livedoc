@@ -6,7 +6,7 @@ const { info, error: logError } = require('../../utils/logger');
 
 // 處理靜態圖片請求
 async function handleStaticImage(req, res, projectPath, filename) {
-  const filePath = path.join(projectPath, filename);
+  const filePath = path.join(projectPath, 'livedoc', 'static', filename);
   const relativePath = `static/${filename}`;
 
   try {

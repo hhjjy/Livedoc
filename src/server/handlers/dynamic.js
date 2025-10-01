@@ -7,7 +7,7 @@ const { info, error: logError } = require('../../utils/logger');
 
 // 處理動態圖表請求
 async function handleDynamicDiagram(req, res, projectPath, filename) {
-  const filePath = path.join(projectPath, filename);
+  const filePath = path.join(projectPath, 'livedoc', 'dynamic', filename);
   const relativePath = `dynamic/${filename}`;
 
   try {
