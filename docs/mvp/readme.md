@@ -21,6 +21,58 @@
 
 ---
 
+## 🚀 快速開始（Demo）
+
+### 前置準備
+```bash
+# 1. 安裝依賴
+npm install
+
+# 2. 啟動 Kroki 服務（必須）
+docker-compose up -d
+```
+
+### 啟動 Demo
+```bash
+# 3. 啟動 LiveDoc 服務器
+node bin/livedoc.js start
+
+# 輸出：
+# ✅ LiveDoc server running on http://localhost:3000
+# 📁 Registered projects: 1
+# 🔧 Kroki service: http://localhost:8000
+```
+
+### 測試 Demo
+```bash
+# 方法 1：瀏覽器直接測試
+open http://localhost:3000/demo/livedoc/static/test.png
+open http://localhost:3000/demo/livedoc/dynamic/demo.puml
+open http://localhost:3000/demo/livedoc/dynamic/flow.mmd
+
+# 方法 2：用 Markdown 預覽
+# 用 VS Code 打開 demo/README.md
+# 按 Cmd+Shift+V (Mac) 或 Ctrl+Shift+V (Windows)
+# 注意：使用內建預覽，不要用"增強預覽"插件
+```
+
+### Demo 目錄結構
+```
+demo/
+├── README.md              # 包含測試用的圖片連結
+└── livedoc/
+    ├── static/
+    │   ├── test.png      # 靜態圖片測試
+    │   ├── test.jpg
+    │   └── test.gif
+    └── dynamic/
+        ├── demo.puml     # PlantUML 測試
+        ├── flow.mmd      # Mermaid 測試
+        └── error.puml    # 錯誤處理測試
+```
+
+---
+
 ## 💡 為什麼要做 LiveDoc？
 
 ### 問題
