@@ -16,7 +16,8 @@ async function generateDiagram(content, type) {
   const encoded = encodeKroki(content);
 
   return new Promise((resolve, reject) => {
-    const url = new URL(`${krokiUrl}/${type}/png/${encoded}`);
+    // v0.3: 改用 SVG 格式（向量圖、覆蓋率高）
+    const url = new URL(`${krokiUrl}/${type}/svg/${encoded}`);
     const protocol = url.protocol === 'https:' ? https : http;
 
     const req = protocol.request(url, (res) => {
@@ -48,8 +49,11 @@ async function generateDiagram(content, type) {
           return;
         }
 
-        // 成功
-        resolve(buffer);
+        // 成功 - 返回 buffer 和 content type
+        resolve({
+          buffer,
+          contentType: contentType || 'image/svg+xml'
+        });
       });
     });
 

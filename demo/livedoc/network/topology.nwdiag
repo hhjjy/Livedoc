@@ -1,0 +1,16 @@
+nwdiag {
+  network dmz {
+      address = "192.168.0.x/24"
+
+      web01 [address = "192.168.0.1"];
+      web02 [address = "192.168.0.2"];
+  }
+
+  network internal {
+      address = "10.0.0.x/24";
+
+      web01 [address = "10.0.0.1"];
+      web02 [address = "10.0.0.2"];
+      db01 [address = "10.0.0.10"];
+  }
+}

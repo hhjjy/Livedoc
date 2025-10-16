@@ -1,0 +1,31 @@
+#zoom: 1
+#direction: right
+
+[<frame>LiveDoc System]
+
+[User|
+  +username: string
+  +email: string
+  |
+  +login()
+  +logout()
+]
+
+[Project|
+  +name: string
+  +path: string
+  |
+  +init()
+  +listFiles()
+]
+
+[Server|
+  +port: int
+  +routes: Route[]
+  |
+  +start()
+  +stop()
+]
+
+[User] 1-* [Project]
+[Project] 1-1 [Server]

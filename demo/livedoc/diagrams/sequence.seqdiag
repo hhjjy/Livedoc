@@ -1,0 +1,8 @@
+seqdiag {
+  browser  => webserver [label = "GET /"];
+  browser <-- webserver;
+  browser => webserver [label = "POST /api"];
+  webserver => database [label = "INSERT"];
+  webserver <-- database;
+  browser <-- webserver;
+}

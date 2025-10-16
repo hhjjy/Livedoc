@@ -25,15 +25,15 @@ async function handleDynamicDiagram(req, res, projectPath, filename) {
       throw new Error(`Cannot determine diagram type for ${filename}`);
     }
 
-    // 呼叫 Kroki 生成圖片
-    const imageBuffer = await generateDiagram(source, diagramType);
+    // 呼叫 Kroki 生成圖片（v0.3: 返回 SVG）
+    const result = await generateDiagram(source, diagramType);
 
     // 記錄成功
-    info(relativePath, `Compiled ${diagramType} → PNG`);
+    info(relativePath, `Compiled ${diagramType} → SVG`);
 
-    // 返回圖片
-    res.setHeader('Content-Type', 'image/png');
-    res.status(200).send(imageBuffer);
+    // 返回圖片（使用 Kroki 返回的 Content-Type）
+    res.setHeader('Content-Type', result.contentType);
+    res.status(200).send(result.buffer);
 
   } catch (err) {
     // 記錄錯誤
