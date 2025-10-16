@@ -7,6 +7,8 @@ Testing LiveDoc image serving.
 ![PNG](http://localhost:3000/demo/livedoc/static/test.png)
 ![JPG](http://localhost:3000/demo/livedoc/static/test.jpg)
 ![GIF](http://localhost:3000/demo/livedoc/static/test.gif)
+f
+![SVG](http://localhost:3000/demo/livedoc/static/test.svg)
 
 ## Dynamic Diagrams
 
