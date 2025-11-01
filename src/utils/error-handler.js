@@ -1,7 +1,19 @@
-const { createCanvas } = require('canvas');
+// 延遲加載 canvas，使其成為可選依賴
+let createCanvas;
+try {
+  createCanvas = require('canvas').createCanvas;
+} catch (err) {
+  // canvas 不可用時，使用 fallback
+  createCanvas = null;
+}
 
 // 生成錯誤圖片 (600x400 PNG)
 function generateErrorImage(errorType, details) {
+  // 如果 canvas 不可用，返回簡單的 SVG 錯誤圖片
+  if (!createCanvas) {
+    return generateErrorSVG(errorType, details);
+  }
+
   const width = 600;
   const height = 400;
   const canvas = createCanvas(width, height);
@@ -53,6 +65,71 @@ function generateErrorImage(errorType, details) {
   ctx.fillText('Check ~/.livedoc/logs/ for more details', 30, height - 20);
 
   return canvas.toBuffer('image/png');
+}
+
+// 生成 SVG 錯誤圖片 (fallback when canvas is not available)
+function generateErrorSVG(errorType, details) {
+  const width = 600;
+  const height = 400;
+
+  // 將詳情文字分行 (簡單版本)
+  const detailLines = [];
+  const maxLineLength = 60;
+  let currentLine = '';
+
+  for (const char of details) {
+    if (currentLine.length >= maxLineLength || char === '\n') {
+      detailLines.push(currentLine);
+      currentLine = char === '\n' ? '' : char;
+    } else {
+      currentLine += char;
+    }
+  }
+  if (currentLine) detailLines.push(currentLine);
+
+  // 生成 SVG
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+  <!-- Background -->
+  <rect x="0" y="0" width="${width}" height="${height}" fill="#ffe0e0"/>
+
+  <!-- Border -->
+  <rect x="2" y="2" width="${width - 4}" height="${height - 4}"
+        fill="none" stroke="#cc0000" stroke-width="4"/>
+
+  <!-- Title -->
+  <text x="30" y="60" font-family="sans-serif" font-size="24"
+        font-weight="bold" fill="#cc0000">❌ LiveDoc Error</text>
+
+  <!-- Separator line -->
+  <line x1="30" y1="80" x2="${width - 30}" y2="80"
+        stroke="#cc0000" stroke-width="2"/>
+
+  <!-- Error Type -->
+  <text x="30" y="120" font-family="sans-serif" font-size="18"
+        font-weight="bold" fill="#333333">Error Type: ${escapeXml(errorType)}</text>
+
+  <!-- Details -->
+  ${detailLines.slice(0, 8).map((line, i) =>
+    `<text x="30" y="${160 + i * 24}" font-family="monospace" font-size="14" fill="#555555">${escapeXml(line)}</text>`
+  ).join('\n  ')}
+
+  <!-- Footer -->
+  <text x="30" y="${height - 20}" font-family="sans-serif" font-size="12"
+        fill="#999999">Check ~/.livedoc/logs/ for more details</text>
+</svg>`;
+
+  return Buffer.from(svg, 'utf-8');
+}
+
+// XML escape helper
+function escapeXml(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
 
 // 文字換行

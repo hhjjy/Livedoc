@@ -1,0 +1,38 @@
+# Development files
+.git
+.gitignore
+.vscode/
+.idea/
+
+# Test and demo files
+demo/
+experiments/
+tests/
+*.test.js
+
+# Documentation (除了 README.md 和 CLAUDE.md)
+docs/
+KNOWN_ISSUES.md
+
+# Build and dependency directories
+node_modules/
+coverage/
+.nyc_output/
+
+# Environment and logs
+.env
+.env.local
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Git
+.github/

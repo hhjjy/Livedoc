@@ -1,28 +1,54 @@
 {
   "name": "livedoc",
   "version": "0.1.0",
-  "description": "LiveDoc - 文檔圖片自動更新工具",
+  "description": "Serve dynamic documentation images (PlantUML, Mermaid) via HTTP for always up-to-date Markdown",
   "main": "src/server/app.js",
   "bin": {
     "livedoc": "./bin/livedoc.js"
   },
   "scripts": {
     "start": "node bin/livedoc.js start",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "echo 'Ready to publish LiveDoc'"
   },
   "keywords": [
     "documentation",
     "plantuml",
     "mermaid",
     "markdown",
-    "diagrams"
+    "diagrams",
+    "kroki",
+    "live-documentation",
+    "auto-update",
+    "documentation-tools"
   ],
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hhjjy/Livedoc.git"
+  },
+  "homepage": "https://github.com/hhjjy/Livedoc#readme",
+  "bugs": {
+    "url": "https://github.com/hhjjy/Livedoc/issues"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "CLAUDE.md",
+    "LICENSE"
+  ],
   "dependencies": {
     "express": "^4.18.0",
     "commander": "^11.0.0",
     "canvas": "^3.0.0",
     "mime-types": "^2.1.35"
+  },
+  "optionalDependencies": {
+    "canvas": "^3.0.0"
   }
 }
