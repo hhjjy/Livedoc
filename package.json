@@ -1,5 +1,5 @@
 {
-  "name": "livedoc",
+  "name": "livedoc-server",
   "version": "0.1.0",
   "description": "Serve dynamic documentation images (PlantUML, Mermaid) via HTTP for always up-to-date Markdown",
   "main": "src/server/app.js",
