@@ -1,0 +1,19 @@
+direction: right
+
+request: HTTP Request
+router: Router
+static: Static Handler
+dynamic: Diagram Handler
+error: Error Handler
+kroki: Kroki Service
+response: HTTP Response
+
+request -> router: /{path}
+router -> static: .png, .jpg, .svg
+router -> dynamic: .puml, .mmd, .d2
+router -> error: error
+
+static -> response: file content
+dynamic -> kroki: render
+kroki -> response: SVG
+error -> response: error image

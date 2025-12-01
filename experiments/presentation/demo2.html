@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveDoc Demo 2 - 動態序列圖執行視覺化</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- D3.js v7 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    
+    <style>
+        .sequence-line {
+            stroke-dasharray: 5, 5;
+        }
+        
+        .message-arrow {
+            marker-end: url(#arrowhead);
+        }
+        
+        .message-return {
+            stroke-dasharray: 3, 3;
+            marker-end: url(#arrowhead-open);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .executing {
+            animation: pulse 1.5s infinite;
+        }
+        
+        .error-glow {
+            filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.8));
+        }
+        
+        .disabled-actor {
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <h1 class="text-2xl font-bold text-gray-800">
+                🎬 LiveDoc Demo 2 - 動態序列圖執行視覺化
+            </h1>
+            <p class="text-sm text-gray-600 mt-1">基於實驗室規範的序列圖，即時顯示執行狀態</p>
+        </div>
+    </header>
+
+    <!-- Control Panel -->
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-lg font-semibold mb-4">🎮 執行控制台</h2>
+            <div class="grid grid-cols-3 gap-4">
+                <button onclick="runScenario('success')" 
+                        class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-all hover:shadow-lg">
+                    ✅ 場景1：完整成功執行
+                </button>
+                <button onclick="runScenario('half-error')" 
+                        class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-all hover:shadow-lg">
+                    ⚠️ 場景2：執行到一半錯誤
+                </button>
+                <button onclick="runScenario('late-error')" 
+                        class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium transition-all hover:shadow-lg">
+                    ❌ 場景3：執行到2/3錯誤
+                </button>
+            </div>
+            <div class="mt-4 flex gap-4">
+                <button onclick="resetDiagram()" 
+                        class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded font-medium">
+                    🔄 重置
+                </button>
+                <button onclick="toggleSpeed()" 
+                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-medium">
+                    ⚡ 速度: <span id="speed-label">正常</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Diagram Area -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">📊 使用者登入流程測試 (Login Test)</h2>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-600">狀態:</span>
+                    <span id="status-badge" class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600">
+                        待命中
+                    </span>
+                </div>
+            </div>
+            
+            <!-- SVG Container -->
+            <div id="sequence-container" class="border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                <!-- D3.js will render here -->
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="mt-4">
+                <div class="flex justify-between text-sm text-gray-600 mb-1">
+                    <span>執行進度</span>
+                    <span id="progress-text">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-3">
+                    <div id="progress-bar" class="bg-blue-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <!-- Execution Log -->
+            <div class="mt-6 bg-gray-50 rounded-lg p-4">
+                <h3 class="text-sm font-semibold text-gray-700 mb-2">📝 執行日誌</h3>
+                <div id="execution-log" class="space-y-1 text-xs font-mono max-h-40 overflow-y-auto">
+                    <div class="text-gray-500">等待執行...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全域變數
+        let svg, g;
+        let executionSpeed = 1000; // 毫秒
+        let currentScenario = null;
+        let isRunning = false;
+        
+        // 定義參與者
+        const actors = [
+            { id: 'client', name: 'Test Client', x: 150, color: '#3B82F6' },
+            { id: 'auth_vm', name: 'ValidationManager', x: 350, color: '#10B981' },
+            { id: 'auth_em', name: 'EncryptionManager', x: 550, color: '#10B981' },
+            { id: 'user_um', name: 'UserManager', x: 750, color: '#F59E0B' },
+            { id: 'user_sm', name: 'SessionManager', x: 950, color: '#F59E0B' }
+        ];
+        
+        // 定義執行步驟
+        const steps = [
+            // Step 1: 輸入驗證
+            { id: '1.0', group: 'step1', from: 'client', to: 'auth_vm', action: '/validate_input', type: 'call', duration: 500 },
+            { id: '1.1', group: 'step1', from: 'auth_vm', to: 'auth_vm', action: '驗證格式', type: 'internal', duration: 300 },
+            { id: '1.2', group: 'step1', from: 'auth_vm', to: 'client', action: '驗證成功', type: 'return', duration: 200 },
+            
+            // Step 2: 密碼處理
+            { id: '2.0', group: 'step2', from: 'client', to: 'auth_em', action: '/encrypt_password', type: 'call', duration: 600 },
+            { id: '2.1', group: 'step2', from: 'auth_em', to: 'auth_em', action: '加密密碼', type: 'internal', duration: 800 },
+            { id: '2.2', group: 'step2', from: 'auth_em', to: 'client', action: '回傳加密結果', type: 'return', duration: 200 },
+            
+            // Step 3: 使用者驗證
+            { id: '3.0', group: 'step3', from: 'client', to: 'user_um', action: '/find_user', type: 'call', duration: 700 },
+            { id: '3.1', group: 'step3', from: 'user_um', to: 'user_um', action: '查詢使用者', type: 'internal', duration: 1000 },
+            { id: '3.2', group: 'step3', from: 'user_um', to: 'client', action: '回傳使用者資料', type: 'return', duration: 300 },
+            
+            // Step 4: 建立 Session
+            { id: '4.0', group: 'step4', from: 'client', to: 'user_sm', action: '/create_session', type: 'call', duration: 500 },
+            { id: '4.1', group: 'step4', from: 'user_sm', to: 'user_sm', action: '建立 session', type: 'internal', duration: 600 },
+            { id: '4.2', group: 'step4', from: 'user_sm', to: 'client', action: '回傳 token', type: 'return', duration: 200 }
+        ];
+        
+        // 初始化 SVG
+        function initDiagram() {
+            const container = d3.select('#sequence-container');
+            container.selectAll('*').remove();
+            
+            const width = 1100;
+            const height = 850;  // 增加高度以容納所有步驟
+            
+            svg = container.append('svg')
+                .attr('width', width)
+                .attr('height', height);
+            
+            // 定義箭頭標記
+            const defs = svg.append('defs');
+            
+            // 實心箭頭
+            defs.append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 10)
+                .attr('refY', 0)
+                .attr('markerWidth', 8)
+                .attr('markerHeight', 8)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M 0,-5 L 10,0 L 0,5')
+                .attr('fill', '#333');
+            
+            // 空心箭頭（用於返回）
+            defs.append('marker')
+                .attr('id', 'arrowhead-open')
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 10)
+                .attr('refY', 0)
+                .attr('markerWidth', 8)
+                .attr('markerHeight', 8)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M 0,-5 L 10,0 L 0,5')
+                .attr('fill', 'none')
+                .attr('stroke', '#333')
+                .attr('stroke-width', 1.5);
+            
+            g = svg.append('g');
+            
+            // 繪製標題
+            g.append('text')
+                .attr('x', width / 2)
+                .attr('y', 30)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '18px')
+                .attr('font-weight', 'bold')
+                .attr('fill', '#1F2937')
+                .text('使用者登入流程測試');
+            
+            // 繪製模組背景
+            // Authentication Module
+            g.append('rect')
+                .attr('x', 280)
+                .attr('y', 60)
+                .attr('width', 340)
+                .attr('height', height - 100)  // 調整底部邊距
+                .attr('fill', '#D1FAE5')
+                .attr('stroke', '#10B981')
+                .attr('stroke-width', 1)
+                .attr('rx', 5)
+                .attr('opacity', 0.3);
+            
+            g.append('text')
+                .attr('x', 450)
+                .attr('y', 80)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '12px')
+                .attr('fill', '#059669')
+                .text('Authentication Module');
+            
+            // User Module
+            g.append('rect')
+                .attr('x', 680)
+                .attr('y', 60)
+                .attr('width', 340)
+                .attr('height', height - 100)  // 調整底部邊距
+                .attr('fill', '#FED7AA')
+                .attr('stroke', '#F59E0B')
+                .attr('stroke-width', 1)
+                .attr('rx', 5)
+                .attr('opacity', 0.3);
+            
+            g.append('text')
+                .attr('x', 850)
+                .attr('y', 80)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '12px')
+                .attr('fill', '#D97706')
+                .text('User Module');
+            
+            // 繪製 Actor 和生命線
+            actors.forEach(actor => {
+                // Actor 圖示
+                const actorG = g.append('g')
+                    .attr('class', `actor-${actor.id}`)
+                    .attr('transform', `translate(${actor.x}, 100)`);
+                
+                // Actor 方框
+                actorG.append('rect')
+                    .attr('x', -60)
+                    .attr('y', -20)
+                    .attr('width', 120)
+                    .attr('height', 40)
+                    .attr('fill', 'white')
+                    .attr('stroke', actor.color)
+                    .attr('stroke-width', 2)
+                    .attr('rx', 5);
+                
+                // Actor 名稱
+                actorG.append('text')
+                    .attr('text-anchor', 'middle')
+                    .attr('y', 5)
+                    .attr('font-size', '12px')
+                    .attr('font-weight', 'bold')
+                    .attr('fill', '#1F2937')
+                    .text(actor.name);
+                
+                // 生命線
+                g.append('line')
+                    .attr('class', `lifeline-${actor.id}`)
+                    .attr('x1', actor.x)
+                    .attr('y1', 120)
+                    .attr('x2', actor.x)
+                    .attr('y2', height - 50)  // 調整生命線底部位置
+                    .attr('stroke', '#9CA3AF')
+                    .attr('stroke-width', 1)
+                    .attr('stroke-dasharray', '5,5');
+            });
+        }
+        
+        // 執行單個步驟
+        async function executeStep(step, shouldFail = false) {
+            const fromActor = actors.find(a => a.id === step.from);
+            const toActor = actors.find(a => a.id === step.to);
+            const y = 150 + (steps.indexOf(step) * 45);  // 增加間距到 45
+            
+            // 更新日誌
+            const log = document.getElementById('execution-log');
+            const timestamp = new Date().toLocaleTimeString('zh-TW');
+            
+            if (shouldFail) {
+                // 錯誤狀態
+                log.innerHTML += `<div class="text-red-600">[${timestamp}] ❌ ${step.id}: ${step.action} - 執行失敗!</div>`;
+                
+                // 繪製錯誤訊息
+                const messageG = g.append('g')
+                    .attr('class', 'message error-glow')
+                    .attr('opacity', 0);
+                
+                if (step.type === 'internal') {
+                    // 自我呼叫
+                    messageG.append('rect')
+                        .attr('x', fromActor.x + 10)
+                        .attr('y', y - 10)
+                        .attr('width', 80)
+                        .attr('height', 20)
+                        .attr('fill', 'none')
+                        .attr('stroke', '#EF4444')
+                        .attr('stroke-width', 2);
+                    
+                    messageG.append('text')
+                        .attr('x', fromActor.x + 50)
+                        .attr('y', y + 3)
+                        .attr('text-anchor', 'middle')
+                        .attr('font-size', '11px')
+                        .attr('fill', '#EF4444')
+                        .attr('font-weight', 'bold')
+                        .text('ERROR!');
+                } else {
+                    // 跨 Actor 呼叫
+                    messageG.append('line')
+                        .attr('x1', fromActor.x)
+                        .attr('y1', y)
+                        .attr('x2', toActor.x)
+                        .attr('y2', y)
+                        .attr('stroke', '#EF4444')
+                        .attr('stroke-width', 2)
+                        .attr('marker-end', step.type === 'return' ? 'url(#arrowhead-open)' : 'url(#arrowhead)');
+                    
+                    messageG.append('text')
+                        .attr('x', (fromActor.x + toActor.x) / 2)
+                        .attr('y', y - 5)
+                        .attr('text-anchor', 'middle')
+                        .attr('font-size', '11px')
+                        .attr('fill', '#EF4444')
+                        .attr('font-weight', 'bold')
+                        .text('❌ 錯誤');
+                }
+                
+                // 顯示錯誤訊息
+                messageG.transition()
+                    .duration(300)
+                    .attr('opacity', 1);
+                
+                // 更新狀態
+                updateStatus('error', `錯誤於步驟 ${step.id}`);
+                
+                throw new Error(`Step ${step.id} failed`);
+            }
+            
+            // 正常執行
+            log.innerHTML += `<div class="text-green-600">[${timestamp}] ✅ ${step.id}: ${step.action}</div>`;
+            
+            // 繪製訊息
+            const messageG = g.append('g')
+                .attr('class', 'message executing')
+                .attr('opacity', 0);
+            
+            if (step.type === 'internal') {
+                // 自我呼叫的矩形
+                const rect = messageG.append('rect')
+                    .attr('x', fromActor.x + 10)
+                    .attr('y', y - 10)
+                    .attr('width', 80)
+                    .attr('height', 20)
+                    .attr('fill', 'none')
+                    .attr('stroke', '#333')
+                    .attr('stroke-width', 1.5);
+                
+                messageG.append('text')
+                    .attr('x', fromActor.x + 50)
+                    .attr('y', y + 3)
+                    .attr('text-anchor', 'middle')
+                    .attr('font-size', '11px')
+                    .attr('fill', '#333')
+                    .text(step.action);
+            } else {
+                // 跨 Actor 的箭頭
+                const line = messageG.append('line')
+                    .attr('x1', fromActor.x)
+                    .attr('y1', y)
+                    .attr('x2', toActor.x)
+                    .attr('y2', y)
+                    .attr('stroke', '#333')
+                    .attr('stroke-width', 1.5);
+                
+                if (step.type === 'return') {
+                    line.attr('stroke-dasharray', '3,3')
+                        .attr('marker-end', 'url(#arrowhead-open)');
+                } else {
+                    line.attr('marker-end', 'url(#arrowhead)');
+                }
+                
+                // 訊息標籤
+                messageG.append('text')
+                    .attr('x', (fromActor.x + toActor.x) / 2)
+                    .attr('y', y - 5)
+                    .attr('text-anchor', 'middle')
+                    .attr('font-size', '11px')
+                    .attr('fill', '#333')
+                    .text(step.action);
+                
+                // 執行時間標籤
+                const timeLabel = messageG.append('text')
+                    .attr('x', (fromActor.x + toActor.x) / 2)
+                    .attr('y', y + 15)
+                    .attr('text-anchor', 'middle')
+                    .attr('font-size', '10px')
+                    .attr('fill', '#10B981')
+                    .attr('font-weight', 'bold')
+                    .attr('opacity', 0);
+            }
+            
+            // 顯示訊息動畫
+            await messageG.transition()
+                .duration(300)
+                .attr('opacity', 1)
+                .end();
+            
+            // 模擬執行時間
+            await new Promise(resolve => setTimeout(resolve, step.duration / (executionSpeed === 500 ? 2 : 1)));
+            
+            // 完成後移除執行中的動畫
+            messageG.classed('executing', false);
+            
+            // 顯示執行時間
+            if (step.type !== 'internal') {
+                messageG.select('text:last-child')
+                    .text(`${step.duration}ms`)
+                    .transition()
+                    .duration(200)
+                    .attr('opacity', 1);
+            }
+            
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        // 執行場景
+        async function runScenario(scenario) {
+            if (isRunning) return;
+            isRunning = true;
+            currentScenario = scenario;
+            
+            // 重置
+            resetDiagram();
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // 更新狀態
+            updateStatus('running', '執行中...');
+            
+            const log = document.getElementById('execution-log');
+            log.innerHTML = `<div class="text-blue-600 font-bold">開始執行場景: ${getScenarioName(scenario)}</div>`;
+            
+            let failAtStep = -1;
+            if (scenario === 'half-error') {
+                failAtStep = 5; // Step 2.2 時失敗
+            } else if (scenario === 'late-error') {
+                failAtStep = 8; // Step 3.2 時失敗
+            }
+            
+            try {
+                for (let i = 0; i < steps.length; i++) {
+                    const shouldFail = (i === failAtStep);
+                    
+                    // 更新進度
+                    const progress = Math.round(((i + 1) / steps.length) * 100);
+                    updateProgress(shouldFail ? progress : Math.min(progress, 100));
+                    
+                    await executeStep(steps[i], shouldFail);
+                    
+                    if (i === failAtStep) {
+                        // 虛化後續步驟
+                        disableRemainingSteps(i);
+                        break;
+                    }
+                }
+                
+                if (scenario === 'success') {
+                    updateStatus('success', '執行完成');
+                    log.innerHTML += `<div class="text-green-600 font-bold mt-2">✅ 所有步驟執行成功！</div>`;
+                }
+            } catch (error) {
+                log.innerHTML += `<div class="text-red-600 font-bold mt-2">❌ 執行中斷: ${error.message}</div>`;
+                
+                // 顯示重試提示
+                setTimeout(() => {
+                    log.innerHTML += `<div class="text-orange-600">💡 提示: 點擊重置按鈕後可重新執行</div>`;
+                }, 1000);
+            }
+            
+            isRunning = false;
+        }
+        
+        // 虛化剩餘步驟
+        function disableRemainingSteps(fromIndex) {
+            const remainingSteps = steps.slice(fromIndex + 1);
+            const affectedActors = new Set();
+            
+            remainingSteps.forEach(step => {
+                affectedActors.add(step.from);
+                affectedActors.add(step.to);
+                
+                const fromActor = actors.find(a => a.id === step.from);
+                const toActor = actors.find(a => a.id === step.to);
+                const y = 150 + (steps.indexOf(step) * 45);  // 保持一致的間距
+                
+                // 繪製虛化的訊息
+                const messageG = g.append('g')
+                    .attr('class', 'message disabled')
+                    .attr('opacity', 0.2);
+                
+                if (step.type === 'internal') {
+                    messageG.append('rect')
+                        .attr('x', fromActor.x + 10)
+                        .attr('y', y - 10)
+                        .attr('width', 80)
+                        .attr('height', 20)
+                        .attr('fill', 'none')
+                        .attr('stroke', '#9CA3AF')
+                        .attr('stroke-width', 1)
+                        .attr('stroke-dasharray', '2,2');
+                    
+                    messageG.append('text')
+                        .attr('x', fromActor.x + 50)
+                        .attr('y', y + 3)
+                        .attr('text-anchor', 'middle')
+                        .attr('font-size', '10px')
+                        .attr('fill', '#9CA3AF')
+                        .text(step.action);
+                } else {
+                    const line = messageG.append('line')
+                        .attr('x1', fromActor.x)
+                        .attr('y1', y)
+                        .attr('x2', toActor.x)
+                        .attr('y2', y)
+                        .attr('stroke', '#9CA3AF')
+                        .attr('stroke-width', 1)
+                        .attr('stroke-dasharray', '2,2');
+                    
+                    messageG.append('text')
+                        .attr('x', (fromActor.x + toActor.x) / 2)
+                        .attr('y', y - 5)
+                        .attr('text-anchor', 'middle')
+                        .attr('font-size', '10px')
+                        .attr('fill', '#9CA3AF')
+                        .text(step.action);
+                }
+            });
+            
+            // 虛化受影響的 Actors
+            affectedActors.forEach(actorId => {
+                if (actorId !== 'client') { // Client 通常不虛化
+                    g.select(`.actor-${actorId}`)
+                        .transition()
+                        .duration(500)
+                        .attr('opacity', 0.3);
+                }
+            });
+        }
+        
+        // 更新狀態
+        function updateStatus(type, text) {
+            const badge = document.getElementById('status-badge');
+            
+            switch(type) {
+                case 'running':
+                    badge.className = 'px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700';
+                    break;
+                case 'success':
+                    badge.className = 'px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700';
+                    break;
+                case 'error':
+                    badge.className = 'px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-700';
+                    break;
+                default:
+                    badge.className = 'px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600';
+            }
+            
+            badge.textContent = text;
+        }
+        
+        // 更新進度條
+        function updateProgress(percent) {
+            document.getElementById('progress-bar').style.width = `${percent}%`;
+            document.getElementById('progress-text').textContent = `${percent}%`;
+        }
+        
+        // 重置圖表
+        function resetDiagram() {
+            initDiagram();
+            updateStatus('idle', '待命中');
+            updateProgress(0);
+            document.getElementById('execution-log').innerHTML = '<div class="text-gray-500">等待執行...</div>';
+        }
+        
+        // 切換速度
+        function toggleSpeed() {
+            const speedLabel = document.getElementById('speed-label');
+            if (executionSpeed === 1000) {
+                executionSpeed = 500;
+                speedLabel.textContent = '快速';
+            } else {
+                executionSpeed = 1000;
+                speedLabel.textContent = '正常';
+            }
+        }
+        
+        // 獲取場景名稱
+        function getScenarioName(scenario) {
+            switch(scenario) {
+                case 'success': return '完整成功執行';
+                case 'half-error': return '執行到一半錯誤';
+                case 'late-error': return '執行到2/3錯誤';
+                default: return '未知場景';
+            }
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initDiagram();
+        });
+    </script>
+</body>
+</html>

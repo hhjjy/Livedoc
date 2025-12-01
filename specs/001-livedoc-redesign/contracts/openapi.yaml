@@ -1,0 +1,144 @@
+openapi: 3.0.3
+info:
+  title: LiveDoc API
+  description: |
+    LiveDoc HTTP API for serving diagram images.
+
+    LiveDoc is a zero-configuration diagram server that renders diagram source files
+    (PlantUML, Mermaid, D2, etc.) as SVG images via Kroki service.
+  version: 2.0.0
+  contact:
+    name: LiveDoc
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+paths:
+  /{path}:
+    get:
+      summary: Get diagram or image
+      description: |
+        Retrieves a diagram rendered as SVG or a static image.
+
+        - For diagram files (.puml, .mmd, .d2, etc.): Returns SVG rendered via Kroki
+        - For static images (.png, .jpg, .gif, .svg): Returns the file directly
+        - For errors: Returns HTTP 200 with a PNG error image
+      operationId: getDiagram
+      parameters:
+        - name: path
+          in: path
+          required: true
+          description: |
+            Path to the diagram or image file, relative to server root.
+
+            Examples:
+            - `diagrams/class.puml`
+            - `specs/001-auth/diagrams/flow.mmd`
+            - `images/logo.png`
+          schema:
+            type: string
+          examples:
+            plantuml:
+              value: diagrams/architecture.puml
+              summary: PlantUML diagram
+            mermaid:
+              value: specs/001-feature/diagrams/flow.mmd
+              summary: Mermaid diagram in SpecKit structure
+            static:
+              value: images/logo.png
+              summary: Static PNG image
+      responses:
+        '200':
+          description: |
+            Always returns HTTP 200 with an image.
+
+            On success: The rendered diagram (SVG) or static image.
+            On error: A PNG image containing the error message.
+          content:
+            image/svg+xml:
+              schema:
+                type: string
+                format: binary
+              example: |
+                <svg xmlns="http://www.w3.org/2000/svg">...</svg>
+            image/png:
+              schema:
+                type: string
+                format: binary
+              description: Static PNG image or error image
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+              description: Static JPEG image
+            image/gif:
+              schema:
+                type: string
+                format: binary
+              description: Static GIF image
+          headers:
+            X-LiveDoc-Status:
+              schema:
+                type: string
+                enum: [success, error]
+              description: Indicates whether the request was successful
+            X-LiveDoc-Error:
+              schema:
+                type: string
+              description: Error message (only present when X-LiveDoc-Status is error)
+
+components:
+  schemas:
+    ErrorImage:
+      type: object
+      description: |
+        Error responses are returned as PNG images containing the error message.
+        This schema describes the error information embedded in the image.
+      properties:
+        title:
+          type: string
+          description: Error title
+          example: File Not Found
+        message:
+          type: string
+          description: Detailed error message
+          example: "diagrams/missing.puml does not exist"
+
+    SupportedFormats:
+      type: object
+      description: Supported diagram and image formats
+      properties:
+        dynamic:
+          type: array
+          items:
+            type: string
+          description: Diagram formats rendered via Kroki
+          example:
+            - .puml
+            - .mmd
+            - .d2
+            - .nomnoml
+            - .erd
+            - .bpmn
+        static:
+          type: array
+          items:
+            type: string
+          description: Static image formats (passthrough)
+          example:
+            - .png
+            - .jpg
+            - .jpeg
+            - .gif
+            - .svg
+
+tags:
+  - name: Diagrams
+    description: Diagram rendering operations
+
+externalDocs:
+  description: LiveDoc Documentation
+  url: https://github.com/hhjjy/Livedoc

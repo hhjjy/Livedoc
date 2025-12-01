@@ -1,0 +1,15 @@
+actdiag {
+  A -> B -> C -> D;
+
+  lane user {
+    label = "User"
+    A [label = "Login"];
+    C [label = "Browse"];
+  }
+
+  lane system {
+    label = "System"
+    B [label = "Authenticate"];
+    D [label = "Log Action"];
+  }
+}

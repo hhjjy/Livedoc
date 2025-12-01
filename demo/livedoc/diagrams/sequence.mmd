@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant User
+    participant Editor as Markdown Editor
+    participant LiveDoc
+    participant Kroki
+
+    User->>Editor: Write ![](http://localhost:3000/diagram.puml)
+    Editor->>LiveDoc: GET /diagram.puml
+    LiveDoc->>LiveDoc: Read diagram source
+    LiveDoc->>Kroki: POST /plantuml/svg
+    Kroki-->>LiveDoc: SVG image
+    LiveDoc-->>Editor: image/svg+xml
+    Editor-->>User: Rendered diagram

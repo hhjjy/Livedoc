@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveDoc - PlantUML Log Player</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- D3.js v7 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .executing {
+            animation: pulse 1.5s infinite;
+        }
+        
+        .log-line {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        
+        .log-highlight {
+            background-color: #fef3c7;
+            border-left: 3px solid #f59e0b;
+        }
+        
+        .timeline-bar {
+            background: linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--progress), #e5e7eb var(--progress));
+        }
+        
+        .actor-box {
+            transition: all 0.3s ease;
+        }
+        
+        .actor-active {
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.5));
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800">
+                        🎬 LiveDoc - PlantUML Log Player
+                    </h1>
+                    <p class="text-sm text-gray-600 mt-1">將 Log 檔案轉換成動態序列圖播放</p>
+                </div>
+                <div class="flex items-center gap-2 text-sm">
+                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full font-medium">
+                        概念展示
+                    </span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Input Section -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-lg font-semibold mb-4">📝 Log 輸入</h2>
+            
+            <div class="grid grid-cols-3 gap-4 mb-4">
+                <button onclick="loadExample('success')" 
+                        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">
+                    📊 範例 1：正常執行
+                </button>
+                <button onclick="loadExample('error')" 
+                        class="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition">
+                    ⚠️ 範例 2：執行錯誤
+                </button>
+                <button onclick="loadExample('slow')" 
+                        class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition">
+                    🐌 範例 3：效能問題
+                </button>
+            </div>
+            
+            <div class="border border-gray-200 rounded-lg">
+                <textarea id="log-input" 
+                          class="w-full p-4 font-mono text-xs text-gray-700 bg-gray-50 rounded-lg"
+                          rows="8"
+                          placeholder="貼上你的 Log 或選擇範例...">
+                </textarea>
+            </div>
+            
+            <div class="mt-4 flex gap-4">
+                <button onclick="parseAndPlay()" 
+                        class="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-medium">
+                    🚀 解析並播放
+                </button>
+                <button onclick="clearAll()" 
+                        class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition">
+                    🔄 清除
+                </button>
+            </div>
+        </div>
+
+        <!-- Player Section -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">▶️ 播放器</h2>
+                <div class="flex items-center gap-4">
+                    <span class="text-sm text-gray-600">狀態:</span>
+                    <span id="player-status" class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
+                        待機中
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Control Bar -->
+            <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                <div class="flex items-center gap-4">
+                    <button onclick="playPause()" 
+                            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">
+                        <span id="play-btn-text">▶️ 播放</span>
+                    </button>
+                    <button onclick="reset()" 
+                            class="px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition">
+                        ⏹️ 停止
+                    </button>
+                    
+                    <div class="flex items-center gap-2 ml-4">
+                        <label class="text-sm text-gray-600">速度:</label>
+                        <select id="speed-select" onchange="changeSpeed()" 
+                                class="px-2 py-1 border border-gray-300 rounded text-sm">
+                            <option value="0.5">0.5x</option>
+                            <option value="1" selected>1x</option>
+                            <option value="2">2x</option>
+                            <option value="5">5x</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex-1 ml-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm text-gray-600" id="current-time">00:00</span>
+                            <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div id="progress-bar" 
+                                     class="h-full bg-blue-500 transition-all duration-300"
+                                     style="width: 0%"></div>
+                            </div>
+                            <span class="text-sm text-gray-600" id="total-time">00:00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sequence Diagram -->
+            <div class="border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                <div id="sequence-container" style="min-height: 500px;">
+                    <!-- D3.js 會在這裡繪製序列圖 -->
+                </div>
+            </div>
+            
+            <!-- Statistics -->
+            <div class="mt-4 grid grid-cols-4 gap-4">
+                <div class="bg-blue-50 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-blue-600" id="stat-total">0</div>
+                    <div class="text-xs text-gray-600">總事件數</div>
+                </div>
+                <div class="bg-green-50 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-green-600" id="stat-success">0</div>
+                    <div class="text-xs text-gray-600">成功</div>
+                </div>
+                <div class="bg-red-50 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-red-600" id="stat-error">0</div>
+                    <div class="text-xs text-gray-600">錯誤</div>
+                </div>
+                <div class="bg-purple-50 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-purple-600" id="stat-duration">0ms</div>
+                    <div class="text-xs text-gray-600">總耗時</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Log Display -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">📋 當前 Log</h2>
+            <div class="bg-gray-900 text-green-400 rounded-lg p-4 max-h-48 overflow-y-auto">
+                <div id="current-log-display" class="font-mono text-xs">
+                    <div class="text-gray-500">等待 Log 輸入...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全域變數
+        let svg, g;
+        let timeline = [];
+        let currentIndex = 0;
+        let isPlaying = false;
+        let playbackSpeed = 1;
+        let playInterval = null;
+        let actors = new Map();
+        let startTime, endTime;
+        
+        // 範例 Log
+        const examples = {
+            success: `2024-01-01 10:00:00.000 [INFO] transaction=tx001 from=FE to=Conv_CM action=call api=/delete_conversation
+2024-01-01 10:00:00.150 [INFO] transaction=tx001 from=Conv_CM to=Meta_CM action=call api=/get_conversation_metadata
+2024-01-01 10:00:00.280 [INFO] transaction=tx001 from=Meta_CM to=Conv_CM action=return status=200 message=metadata_found
+2024-01-01 10:00:00.350 [INFO] transaction=tx001 from=Conv_CM to=Conv_TM action=call api=/delete_text
+2024-01-01 10:00:00.500 [INFO] transaction=tx001 from=Conv_TM to=Meta_TM action=call api=/get_text_metadata
+2024-01-01 10:00:00.650 [INFO] transaction=tx001 from=Meta_TM to=Conv_TM action=return status=200 message=text_metadata_found
+2024-01-01 10:00:00.750 [INFO] transaction=tx001 from=Conv_TM to=Conv_TM action=internal message=deleting_text_files
+2024-01-01 10:00:00.950 [INFO] transaction=tx001 from=Conv_TM to=Meta_TM action=call api=/delete_text_metadata
+2024-01-01 10:00:01.100 [INFO] transaction=tx001 from=Meta_TM to=Conv_TM action=return status=200 message=deleted
+2024-01-01 10:00:01.200 [INFO] transaction=tx001 from=Conv_TM to=Conv_CM action=return status=200 message=text_deleted
+2024-01-01 10:00:01.300 [INFO] transaction=tx001 from=Conv_CM to=Topic_TM action=call api=/delete_topic
+2024-01-01 10:00:01.500 [INFO] transaction=tx001 from=Topic_TM to=Topic_B action=call api=/broker/delete_topic
+2024-01-01 10:00:01.800 [INFO] transaction=tx001 from=Topic_B to=Topic_TM action=return status=200 message=topic_deleted
+2024-01-01 10:00:01.900 [INFO] transaction=tx001 from=Topic_TM to=Conv_CM action=return status=200 message=success
+2024-01-01 10:00:02.000 [INFO] transaction=tx001 from=Conv_CM to=Meta_CM action=call api=/delete_conversation_metadata
+2024-01-01 10:00:02.150 [INFO] transaction=tx001 from=Meta_CM to=Conv_CM action=return status=200 message=metadata_deleted
+2024-01-01 10:00:02.200 [INFO] transaction=tx001 from=Conv_CM to=FE action=return status=200 message=conversation_deleted`,
+
+            error: `2024-01-01 10:00:00.000 [INFO] transaction=tx002 from=FE to=Conv_CM action=call api=/delete_conversation
+2024-01-01 10:00:00.150 [INFO] transaction=tx002 from=Conv_CM to=Meta_CM action=call api=/get_conversation_metadata
+2024-01-01 10:00:00.280 [INFO] transaction=tx002 from=Meta_CM to=Conv_CM action=return status=200 message=metadata_found
+2024-01-01 10:00:00.350 [INFO] transaction=tx002 from=Conv_CM to=Conv_TM action=call api=/delete_text
+2024-01-01 10:00:00.500 [INFO] transaction=tx002 from=Conv_TM to=Meta_TM action=call api=/get_text_metadata
+2024-01-01 10:00:00.650 [ERROR] transaction=tx002 from=Meta_TM to=Conv_TM action=return status=404 error=text_metadata_not_found
+2024-01-01 10:00:00.700 [ERROR] transaction=tx002 from=Conv_TM to=Conv_CM action=return status=500 error=failed_to_delete_text
+2024-01-01 10:00:00.750 [ERROR] transaction=tx002 from=Conv_CM to=FE action=return status=500 error=deletion_failed`,
+
+            slow: `2024-01-01 10:00:00.000 [INFO] transaction=tx003 from=FE to=Conv_CM action=call api=/delete_conversation
+2024-01-01 10:00:00.150 [INFO] transaction=tx003 from=Conv_CM to=Meta_CM action=call api=/get_conversation_metadata
+2024-01-01 10:00:00.280 [INFO] transaction=tx003 from=Meta_CM to=Conv_CM action=return status=200 message=metadata_found
+2024-01-01 10:00:00.350 [INFO] transaction=tx003 from=Conv_CM to=Conv_TM action=call api=/delete_text
+2024-01-01 10:00:00.500 [INFO] transaction=tx003 from=Conv_TM to=Meta_TM action=call api=/get_text_metadata
+2024-01-01 10:00:03.650 [WARN] transaction=tx003 from=Meta_TM to=Conv_TM action=return status=200 message=slow_response time=3150ms
+2024-01-01 10:00:03.750 [INFO] transaction=tx003 from=Conv_TM to=Conv_TM action=internal message=deleting_text_files
+2024-01-01 10:00:03.950 [INFO] transaction=tx003 from=Conv_TM to=Meta_TM action=call api=/delete_text_metadata
+2024-01-01 10:00:07.100 [WARN] transaction=tx003 from=Meta_TM to=Conv_TM action=return status=200 message=slow_deletion time=3150ms
+2024-01-01 10:00:07.200 [INFO] transaction=tx003 from=Conv_TM to=Conv_CM action=return status=200 message=text_deleted
+2024-01-01 10:00:07.300 [INFO] transaction=tx003 from=Conv_CM to=FE action=return status=200 message=conversation_deleted_slowly total_time=7300ms`
+        };
+        
+        // 載入範例
+        function loadExample(type) {
+            document.getElementById('log-input').value = examples[type];
+            updateStatus('ready', '範例已載入');
+        }
+        
+        // 解析 Log
+        function parseLog(logText) {
+            const lines = logText.trim().split('\n');
+            const events = [];
+            actors.clear();
+            
+            lines.forEach((line, index) => {
+                // 解析 Log 格式
+                const timeMatch = line.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3})/);
+                const levelMatch = line.match(/\[(INFO|WARN|ERROR)\]/);
+                const fromMatch = line.match(/from=(\w+)/);
+                const toMatch = line.match(/to=(\w+)/);
+                const actionMatch = line.match(/action=(\w+)/);
+                const apiMatch = line.match(/api=([\w\/]+)/);
+                const statusMatch = line.match(/status=(\d+)/);
+                const messageMatch = line.match(/message=(\w+)/);
+                const errorMatch = line.match(/error=([\w_]+)/);
+                
+                if (timeMatch && fromMatch && toMatch) {
+                    const event = {
+                        timestamp: new Date(timeMatch[1]),
+                        level: levelMatch ? levelMatch[1] : 'INFO',
+                        from: fromMatch[1],
+                        to: toMatch[1],
+                        action: actionMatch ? actionMatch[1] : 'unknown',
+                        api: apiMatch ? apiMatch[1] : null,
+                        status: statusMatch ? parseInt(statusMatch[1]) : null,
+                        message: messageMatch ? messageMatch[1] : null,
+                        error: errorMatch ? errorMatch[1] : null,
+                        rawLine: line,
+                        index: index
+                    };
+                    
+                    events.push(event);
+                    
+                    // 收集 actors
+                    if (!actors.has(event.from)) {
+                        actors.set(event.from, { name: event.from, count: 0 });
+                    }
+                    if (!actors.has(event.to)) {
+                        actors.set(event.to, { name: event.to, count: 0 });
+                    }
+                    actors.get(event.from).count++;
+                    actors.get(event.to).count++;
+                }
+            });
+            
+            // 計算時間差
+            if (events.length > 0) {
+                startTime = events[0].timestamp;
+                endTime = events[events.length - 1].timestamp;
+                
+                events.forEach(event => {
+                    event.relativeTime = event.timestamp - startTime;
+                });
+            }
+            
+            return events;
+        }
+        
+        // 初始化序列圖
+        function initDiagram() {
+            const container = d3.select('#sequence-container');
+            container.selectAll('*').remove();
+            
+            const actorList = Array.from(actors.keys());
+            const width = Math.max(900, actorList.length * 150);
+            const height = 500;
+            
+            svg = container.append('svg')
+                .attr('width', width)
+                .attr('height', height);
+            
+            // 定義箭頭
+            const defs = svg.append('defs');
+            
+            defs.append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 10)
+                .attr('refY', 0)
+                .attr('markerWidth', 8)
+                .attr('markerHeight', 8)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M 0,-5 L 10,0 L 0,5')
+                .attr('fill', '#333');
+            
+            defs.append('marker')
+                .attr('id', 'arrowhead-error')
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 10)
+                .attr('refY', 0)
+                .attr('markerWidth', 8)
+                .attr('markerHeight', 8)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M 0,-5 L 10,0 L 0,5')
+                .attr('fill', '#ef4444');
+            
+            g = svg.append('g');
+            
+            // 標題
+            g.append('text')
+                .attr('x', width / 2)
+                .attr('y', 30)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '18px')
+                .attr('font-weight', 'bold')
+                .text('Log Replay Sequence Diagram');
+            
+            // 繪製 Actors
+            const spacing = width / (actorList.length + 1);
+            
+            actorList.forEach((actorName, i) => {
+                const x = spacing * (i + 1);
+                const actor = actors.get(actorName);
+                actor.x = x;
+                
+                const actorG = g.append('g')
+                    .attr('class', `actor actor-${actorName}`)
+                    .attr('transform', `translate(${x}, 70)`);
+                
+                actorG.append('rect')
+                    .attr('class', 'actor-box')
+                    .attr('x', -40)
+                    .attr('y', -20)
+                    .attr('width', 80)
+                    .attr('height', 40)
+                    .attr('fill', 'white')
+                    .attr('stroke', getActorColor(actorName))
+                    .attr('stroke-width', 2)
+                    .attr('rx', 5);
+                
+                actorG.append('text')
+                    .attr('text-anchor', 'middle')
+                    .attr('y', 5)
+                    .attr('font-size', '12px')
+                    .attr('font-weight', 'bold')
+                    .text(actorName);
+                
+                // 生命線
+                g.append('line')
+                    .attr('class', `lifeline lifeline-${actorName}`)
+                    .attr('x1', x)
+                    .attr('y1', 90)
+                    .attr('x2', x)
+                    .attr('y2', height - 30)
+                    .attr('stroke', '#9CA3AF')
+                    .attr('stroke-width', 1)
+                    .attr('stroke-dasharray', '5,5');
+            });
+        }
+        
+        // 取得 Actor 顏色
+        function getActorColor(name) {
+            if (name === 'FE') return '#3B82F6';
+            if (name.includes('Conv')) return '#10B981';
+            if (name.includes('Meta')) return '#F59E0B';
+            if (name.includes('Topic')) return '#8B5CF6';
+            return '#6B7280';
+        }
+        
+        // 繪製單個事件
+        function drawEvent(event, index) {
+            const fromActor = actors.get(event.from);
+            const toActor = actors.get(event.to);
+            const y = 120 + (index * 25);
+            
+            // 高亮 actors
+            g.selectAll('.actor-box').classed('actor-active', false);
+            g.select(`.actor-${event.from} .actor-box`).classed('actor-active', true);
+            g.select(`.actor-${event.to} .actor-box`).classed('actor-active', true);
+            
+            // 繪製訊息
+            const messageG = g.append('g')
+                .attr('class', `message message-${index}`)
+                .attr('opacity', 0);
+            
+            const isError = event.level === 'ERROR';
+            const isWarn = event.level === 'WARN';
+            const color = isError ? '#ef4444' : isWarn ? '#f59e0b' : '#333';
+            
+            if (event.from === event.to) {
+                // 自我呼叫
+                messageG.append('rect')
+                    .attr('x', fromActor.x + 10)
+                    .attr('y', y - 10)
+                    .attr('width', 70)
+                    .attr('height', 20)
+                    .attr('fill', 'none')
+                    .attr('stroke', color)
+                    .attr('stroke-width', 1.5);
+                
+                messageG.append('text')
+                    .attr('x', fromActor.x + 45)
+                    .attr('y', y + 3)
+                    .attr('text-anchor', 'middle')
+                    .attr('font-size', '10px')
+                    .attr('fill', color)
+                    .text(event.action);
+            } else {
+                // 跨 Actor 呼叫
+                const line = messageG.append('line')
+                    .attr('x1', fromActor.x)
+                    .attr('y1', y)
+                    .attr('x2', toActor.x)
+                    .attr('y2', y)
+                    .attr('stroke', color)
+                    .attr('stroke-width', isError ? 2 : 1.5)
+                    .attr('marker-end', isError ? 'url(#arrowhead-error)' : 'url(#arrowhead)');
+                
+                if (event.action === 'return') {
+                    line.attr('stroke-dasharray', '3,3');
+                }
+                
+                // 訊息文字
+                let label = event.api || event.action;
+                if (event.status) label += ` (${event.status})`;
+                if (event.error) label = `❌ ${event.error}`;
+                
+                messageG.append('text')
+                    .attr('x', (fromActor.x + toActor.x) / 2)
+                    .attr('y', y - 5)
+                    .attr('text-anchor', 'middle')
+                    .attr('font-size', '10px')
+                    .attr('fill', color)
+                    .attr('font-weight', isError ? 'bold' : 'normal')
+                    .text(label);
+                
+                // 時間標籤
+                if (event.relativeTime > 0) {
+                    messageG.append('text')
+                        .attr('x', (fromActor.x + toActor.x) / 2)
+                        .attr('y', y + 12)
+                        .attr('text-anchor', 'middle')
+                        .attr('font-size', '9px')
+                        .attr('fill', '#10B981')
+                        .text(`+${event.relativeTime}ms`);
+                }
+            }
+            
+            // 淡入動畫
+            messageG.transition()
+                .duration(200)
+                .attr('opacity', 1);
+            
+            // 更新當前 log 顯示
+            const logDisplay = document.getElementById('current-log-display');
+            const existingLogs = logDisplay.querySelectorAll('.log-line');
+            existingLogs.forEach(log => log.classList.remove('log-highlight'));
+            
+            const logLine = document.createElement('div');
+            logLine.className = 'log-line log-highlight';
+            logLine.textContent = event.rawLine;
+            logDisplay.appendChild(logLine);
+            logDisplay.scrollTop = logDisplay.scrollHeight;
+        }
+        
+        // 解析並播放
+        function parseAndPlay() {
+            const logText = document.getElementById('log-input').value;
+            if (!logText.trim()) {
+                alert('請輸入 Log 或選擇範例');
+                return;
+            }
+            
+            timeline = parseLog(logText);
+            if (timeline.length === 0) {
+                alert('無法解析 Log，請檢查格式');
+                return;
+            }
+            
+            // 初始化圖表
+            initDiagram();
+            currentIndex = 0;
+            
+            // 更新統計
+            updateStatistics();
+            
+            // 更新時間顯示
+            const duration = endTime - startTime;
+            document.getElementById('total-time').textContent = formatTime(duration);
+            
+            updateStatus('ready', '準備播放');
+        }
+        
+        // 播放/暫停
+        function playPause() {
+            if (timeline.length === 0) {
+                alert('請先解析 Log');
+                return;
+            }
+            
+            if (isPlaying) {
+                pause();
+            } else {
+                play();
+            }
+        }
+        
+        // 播放
+        function play() {
+            if (currentIndex >= timeline.length) {
+                currentIndex = 0;
+                g.selectAll('.message').remove();
+            }
+            
+            isPlaying = true;
+            document.getElementById('play-btn-text').textContent = '⏸️ 暫停';
+            updateStatus('playing', '播放中');
+            
+            playNext();
+        }
+        
+        // 暫停
+        function pause() {
+            isPlaying = false;
+            document.getElementById('play-btn-text').textContent = '▶️ 播放';
+            updateStatus('paused', '已暫停');
+            
+            if (playInterval) {
+                clearTimeout(playInterval);
+            }
+        }
+        
+        // 播放下一個事件
+        function playNext() {
+            if (!isPlaying || currentIndex >= timeline.length) {
+                if (currentIndex >= timeline.length) {
+                    // 播放結束
+                    isPlaying = false;
+                    document.getElementById('play-btn-text').textContent = '▶️ 播放';
+                    updateStatus('finished', '播放完成');
+                }
+                return;
+            }
+            
+            const event = timeline[currentIndex];
+            drawEvent(event, currentIndex);
+            
+            // 更新進度
+            const progress = ((currentIndex + 1) / timeline.length) * 100;
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+            document.getElementById('current-time').textContent = formatTime(event.relativeTime);
+            
+            currentIndex++;
+            
+            // 計算下一個事件的延遲
+            let delay = 500 / playbackSpeed; // 預設延遲
+            if (currentIndex < timeline.length) {
+                const nextEvent = timeline[currentIndex];
+                const timeDiff = nextEvent.relativeTime - event.relativeTime;
+                if (timeDiff > 0) {
+                    delay = Math.min(timeDiff / playbackSpeed, 2000 / playbackSpeed);
+                }
+            }
+            
+            playInterval = setTimeout(() => playNext(), delay);
+        }
+        
+        // 重置
+        function reset() {
+            pause();
+            currentIndex = 0;
+            if (g) {
+                g.selectAll('.message').remove();
+                g.selectAll('.actor-box').classed('actor-active', false);
+            }
+            document.getElementById('progress-bar').style.width = '0%';
+            document.getElementById('current-time').textContent = '00:00';
+            updateStatus('ready', '已重置');
+        }
+        
+        // 清除全部
+        function clearAll() {
+            reset();
+            document.getElementById('log-input').value = '';
+            document.getElementById('current-log-display').innerHTML = '<div class="text-gray-500">等待 Log 輸入...</div>';
+            timeline = [];
+            actors.clear();
+            if (svg) {
+                d3.select('#sequence-container').selectAll('*').remove();
+            }
+            updateStatus('idle', '待機中');
+        }
+        
+        // 改變速度
+        function changeSpeed() {
+            const select = document.getElementById('speed-select');
+            playbackSpeed = parseFloat(select.value);
+        }
+        
+        // 更新狀態
+        function updateStatus(type, text) {
+            const status = document.getElementById('player-status');
+            status.textContent = text;
+            
+            status.className = 'px-3 py-1 rounded-full text-sm font-medium ';
+            switch(type) {
+                case 'playing':
+                    status.className += 'bg-green-100 text-green-700';
+                    break;
+                case 'paused':
+                    status.className += 'bg-yellow-100 text-yellow-700';
+                    break;
+                case 'error':
+                    status.className += 'bg-red-100 text-red-700';
+                    break;
+                case 'finished':
+                    status.className += 'bg-blue-100 text-blue-700';
+                    break;
+                default:
+                    status.className += 'bg-gray-100 text-gray-700';
+            }
+        }
+        
+        // 更新統計
+        function updateStatistics() {
+            const total = timeline.length;
+            const errors = timeline.filter(e => e.level === 'ERROR').length;
+            const success = total - errors;
+            const duration = endTime - startTime;
+            
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-success').textContent = success;
+            document.getElementById('stat-error').textContent = errors;
+            document.getElementById('stat-duration').textContent = `${duration}ms`;
+        }
+        
+        // 格式化時間
+        function formatTime(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStatus('idle', '待機中');
+        });
+    </script>
+</body>
+</html>

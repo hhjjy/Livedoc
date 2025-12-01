@@ -1,0 +1,42 @@
+@startuml Architecture
+!theme plain
+
+title LiveDoc Architecture
+
+package "Markdown Editor" {
+  [VS Code] as editor
+  [Typora] as typora
+}
+
+package "LiveDoc Server" {
+  [Express Router] as router
+  [Static Handler] as static
+  [Diagram Handler] as dynamic
+  [Error Handler] as error
+}
+
+cloud "Kroki Service" {
+  [kroki.io] as kroki
+}
+
+database "File System" {
+  folder "Project Root" {
+    [*.puml] as puml
+    [*.mmd] as mmd
+    [*.png] as png
+  }
+}
+
+editor --> router : HTTP GET
+typora --> router : HTTP GET
+
+router --> static : static files
+router --> dynamic : diagram files
+router --> error : errors
+
+static --> png : read
+dynamic --> puml : read
+dynamic --> mmd : read
+dynamic --> kroki : render
+
+@enduml

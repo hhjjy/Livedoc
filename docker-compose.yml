@@ -1,0 +1,33 @@
+version: "3"
+services:
+  kroki:
+    image: yuzutech/kroki
+    ports:
+      - "8000:8000"
+    environment:
+      # Companion containers 配置
+      - KROKI_MERMAID_HOST=mermaid
+      - KROKI_BPMN_HOST=bpmn
+      - KROKI_EXCALIDRAW_HOST=excalidraw
+    depends_on:
+      - mermaid
+      - bpmn
+      - excalidraw
+
+  # Mermaid 圖表支援 (已有)
+  mermaid:
+    image: yuzutech/kroki-mermaid
+    expose:
+      - "8002"
+
+  # BPMN 圖表支援 (新增 - v0.3)
+  bpmn:
+    image: yuzutech/kroki-bpmn
+    expose:
+      - "8003"
+
+  # Excalidraw 手繪風格圖表支援 (新增 - v0.3)
+  excalidraw:
+    image: yuzutech/kroki-excalidraw
+    expose:
+      - "8004"

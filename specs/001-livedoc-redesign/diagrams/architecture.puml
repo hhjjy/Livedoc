@@ -1,0 +1,91 @@
+@startuml LiveDoc v2 Architecture
+!theme plain
+
+title LiveDoc v2.0 Architecture
+
+skinparam componentStyle uml2
+skinparam backgroundColor white
+
+package "Markdown Editor" {
+  [VS Code] as vscode
+  [Typora] as typora
+  [Other Editors] as other
+}
+
+package "LiveDoc Server" {
+  package "CLI Layer" {
+    [bin/livedoc.js] as cli
+    [Commander] as commander
+    [start command] as start_cmd
+    [templates command] as templates_cmd
+  }
+
+  package "Server Layer" {
+    [Express App] as app
+    [Router] as router
+    [Static Handler] as static
+    [Diagram Handler] as diagram
+    [Error Handler] as error
+  }
+
+  package "Config Layer" {
+    [Config Loader] as loader
+    [Defaults] as defaults
+    [Formats] as formats
+  }
+
+  package "Utils Layer" {
+    [Kroki Client] as kroki_client
+    [Security] as security
+    [Error Image] as error_img
+    [Port Finder] as port
+  }
+}
+
+cloud "External Services" {
+  [Kroki.io] as kroki
+  [Custom Kroki] as custom_kroki
+}
+
+database "File System" {
+  folder "Project Root" {
+    [*.puml] as puml
+    [*.mmd] as mmd
+    [*.d2] as d2
+    [*.png] as png
+    [*.jpg] as jpg
+  }
+}
+
+' Connections
+vscode --> router : HTTP GET /{path}
+typora --> router : HTTP GET /{path}
+other --> router : HTTP GET /{path}
+
+cli --> commander
+commander --> start_cmd
+commander --> templates_cmd
+start_cmd --> app
+
+router --> security : validate path
+router --> static : static files
+router --> diagram : diagram files
+router --> error : on error
+
+static --> png : read
+static --> jpg : read
+
+diagram --> puml : read source
+diagram --> mmd : read source
+diagram --> d2 : read source
+diagram --> kroki_client : render
+
+kroki_client --> kroki : API request
+kroki_client --> custom_kroki : API request
+
+error --> error_img : generate SVG
+
+loader --> defaults : base config
+loader --> formats : format mapping
+
+@enduml

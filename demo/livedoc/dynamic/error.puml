@@ -1,0 +1,4 @@
+@startuml
+This is invalid syntax
+No arrows here
+@enduml

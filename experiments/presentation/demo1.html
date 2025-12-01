@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveDoc Demo 1 - Dynamic Markdown Images</title>
+    
+    <!-- Tailwind CSS from Cloudflare CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/4.1.13/lib.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- D3.js from Cloudflare CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    
+    <!-- Custom Styles for Consistent Theme -->
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+            <div class="flex items-center justify-between">
+                <h1 class="text-3xl font-bold text-slate-800 flex items-center">
+                    <span class="text-4xl mr-3">🚀</span>
+                    LiveDoc Demo 1
+                    <span class="ml-3 text-lg font-normal text-slate-500">讓 Markdown 文檔活起來</span>
+                </h1>
+                <div class="flex items-center space-x-2">
+                    <span class="relative flex h-3 w-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
+                    <span class="text-sm font-medium text-slate-600">Live System</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Introduction Card -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+            <h2 class="text-xl font-semibold text-slate-800 mb-3">
+                <span class="text-2xl mr-2">📖</span>
+                展示說明
+            </h2>
+            <p class="text-slate-600 leading-relaxed">
+                以下展示四種動態圖表效果，每個都能即時生成並嵌入 Markdown 文檔。
+                點擊「重新整理」按鈕模擬數據更新。
+            </p>
+            <div class="mt-4 p-4 bg-slate-100 rounded-lg border border-slate-200">
+                <code class="text-sm font-mono text-blue-600">
+                    ![API Status](http://localhost:3000/api/dashboard)
+                </code>
+            </div>
+        </div>
+
+
+
+        <!-- Demo Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- 效果 A: API Status Dashboard -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+                    <h3 class="text-white font-semibold text-lg">
+                        📊 效果 A: API 狀態儀表板
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <div class="mb-4 px-3 py-2 bg-slate-100 rounded-lg border border-slate-200">
+                        <code class="text-xs font-mono text-slate-600">
+                            ![](http://localhost:3000/api/dashboard)
+                        </code>
+                    </div>
+                    <div class="bg-slate-50 rounded-lg p-2 border border-slate-200">
+                        <canvas id="dashboard-canvas" width="600" height="320" class="w-full"></canvas>
+                    </div>
+                    <button onclick="refreshDashboard()" 
+                            class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2.5 px-4 rounded-lg transition-all hover:shadow-md flex items-center justify-center">
+                        <span class="mr-2">🔄</span>
+                        重新整理（模擬即時更新）
+                    </button>
+                </div>
+            </div>
+
+            <!-- 效果 B: System Resources （修正版）-->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-4">
+                    <h3 class="text-white font-semibold text-lg">
+                        💻 效果 B: 系統資源監控
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <div class="mb-4 px-3 py-2 bg-slate-100 rounded-lg border border-slate-200">
+                        <code class="text-xs font-mono text-slate-600">
+                            ![](http://localhost:3000/monitor/resources)
+                        </code>
+                    </div>
+                    <div class="bg-slate-50 rounded-lg p-2 border border-slate-200">
+                        <canvas id="resources-canvas" width="600" height="320" class="w-full"></canvas>
+                    </div>
+                    <button onclick="refreshResources()" 
+                            class="mt-4 w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-2.5 px-4 rounded-lg transition-all hover:shadow-md flex items-center justify-center">
+                        <span class="mr-2">🔄</span>
+                        重新整理（模擬即時更新）
+                    </button>
+                </div>
+            </div>
+
+            <!-- 效果 C: Mini Dashboard -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-violet-500 to-violet-600 px-6 py-4">
+                    <h3 class="text-white font-semibold text-lg">
+                        📱 效果 C: 迷你儀表板
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <div class="mb-4 px-3 py-2 bg-slate-100 rounded-lg border border-slate-200">
+                        <code class="text-xs font-mono text-slate-600">
+                            ![](http://localhost:3000/monitor/mini-dash)
+                        </code>
+                    </div>
+                    <div class="bg-slate-50 rounded-lg p-2 border border-slate-200">
+                        <canvas id="mini-canvas" width="450" height="220" class="w-full"></canvas>
+                    </div>
+                    <button onclick="refreshMiniDash()" 
+                            class="mt-4 w-full bg-violet-500 hover:bg-violet-600 text-white font-medium py-2.5 px-4 rounded-lg transition-all hover:shadow-md flex items-center justify-center">
+                        <span class="mr-2">🔄</span>
+                        重新整理（模擬即時更新）
+                    </button>
+                </div>
+            </div>
+
+            <!-- 效果 D: API Performance Bar Chart （改為長條圖）-->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-4">
+                    <h3 class="text-white font-semibold text-lg">
+                        📈 效果 D: API 效能比較
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <div class="mb-4 px-3 py-2 bg-slate-100 rounded-lg border border-slate-200">
+                        <code class="text-xs font-mono text-slate-600">
+                            ![](http://localhost:3000/api/performance)
+                        </code>
+                    </div>
+                    <div class="bg-slate-50 rounded-lg p-2 border border-slate-200">
+                        <canvas id="chart-canvas" width="600" height="320" class="w-full"></canvas>
+                    </div>
+                    <button onclick="refreshChart()" 
+                            class="mt-4 w-full bg-amber-500 hover:bg-amber-600 text-white font-medium py-2.5 px-4 rounded-lg transition-all hover:shadow-md flex items-center justify-center">
+                        <span class="mr-2">🔄</span>
+                        重新整理（模擬即時更新）
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 統一的顏色主題
+        const theme = {
+            bg: '#ffffff',
+            bgAlt: '#f8fafc',
+            border: '#e2e8f0',
+            text: '#1e293b',
+            textSecondary: '#64748b',
+            primary: '#3b82f6',
+            success: '#10b981',
+            warning: '#f59e0b',
+            error: '#ef4444',
+            grid: '#f1f5f9'
+        };
+
+        // 效果 A: API Status Dashboard
+        function refreshDashboard() {
+            const canvas = document.getElementById('dashboard-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 清空並設定背景
+            ctx.fillStyle = theme.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 標題
+            ctx.fillStyle = theme.text;
+            ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('API Status Dashboard', canvas.width / 2, 35);
+            
+            // 時間戳記
+            ctx.font = '13px system-ui, -apple-system, sans-serif';
+            ctx.fillStyle = theme.textSecondary;
+            const now = new Date().toLocaleString('zh-TW');
+            ctx.fillText(now, canvas.width / 2, 55);
+            
+            // 分隔線
+            ctx.strokeStyle = theme.border;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(30, 70);
+            ctx.lineTo(canvas.width - 30, 70);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // API 端點狀態
+            const endpoints = [
+                { name: 'GET /users', status: 'ok', time: Math.floor(Math.random() * 50) + 30, error: (Math.random() * 0.5).toFixed(1) },
+                { name: 'POST /users', status: 'ok', time: Math.floor(Math.random() * 60) + 60, error: (Math.random() * 0.8).toFixed(1) },
+                { name: 'GET /posts', status: Math.random() > 0.3 ? 'slow' : 'ok', time: Math.floor(Math.random() * 200) + 350, error: (Math.random() * 2).toFixed(1) },
+                { name: 'DELETE /posts', status: Math.random() > 0.5 ? 'error' : 'slow', time: 0, error: Math.random() > 0.5 ? '100.0' : '50.0' }
+            ];
+            
+            ctx.textAlign = 'left';
+            endpoints.forEach((endpoint, i) => {
+                const y = 105 + (i * 45);
+                
+                // 背景條紋（交替）
+                if (i % 2 === 0) {
+                    ctx.fillStyle = theme.bgAlt;
+                    ctx.fillRect(30, y - 20, canvas.width - 60, 40);
+                }
+                
+                // 狀態圓點
+                ctx.beginPath();
+                ctx.arc(50, y, 7, 0, Math.PI * 2);
+                ctx.fillStyle = endpoint.status === 'ok' ? theme.success : 
+                               endpoint.status === 'slow' ? theme.warning : theme.error;
+                ctx.fill();
+                
+                // 端點名稱
+                ctx.fillStyle = theme.text;
+                ctx.font = '15px system-ui, -apple-system, sans-serif';
+                ctx.fillText(endpoint.name, 75, y + 5);
+                
+                // 回應時間
+                ctx.fillStyle = endpoint.status === 'ok' ? theme.success : 
+                               endpoint.status === 'slow' ? theme.warning : theme.error;
+                ctx.font = 'bold 15px system-ui, -apple-system, sans-serif';
+                ctx.fillText(endpoint.time > 0 ? `${endpoint.time}ms` : 'Error', 230, y + 5);
+                
+                // 錯誤率
+                ctx.fillStyle = theme.textSecondary;
+                ctx.font = '14px system-ui, -apple-system, sans-serif';
+                ctx.fillText(`${endpoint.error}%`, 350, y + 5);
+            });
+            
+            // 底部統計區
+            ctx.fillStyle = theme.bgAlt;
+            ctx.fillRect(30, 270, canvas.width - 60, 40);
+            
+            const uptime = (99 + Math.random()).toFixed(2);
+            const requests = Math.floor(Math.random() * 50000) + 100000;
+            
+            ctx.fillStyle = theme.text;
+            ctx.font = '16px system-ui, -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Uptime: ${uptime}% | Requests: ${Math.floor(requests/1000)}K`, canvas.width / 2, 295);
+        }
+        
+        // 效果 B: System Resources （修正版）
+        function refreshResources() {
+            const canvas = document.getElementById('resources-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 背景
+            ctx.fillStyle = theme.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 標題區域
+            ctx.fillStyle = theme.bgAlt;
+            ctx.fillRect(0, 0, canvas.width, 60);
+            
+            // 標題
+            ctx.fillStyle = theme.text;
+            ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('System Resources Monitor', canvas.width / 2, 30);
+            
+            // 副標題
+            ctx.font = '12px system-ui, -apple-system, sans-serif';
+            ctx.fillStyle = theme.primary;
+            const now = new Date().toLocaleTimeString('zh-TW');
+            ctx.fillText(`Last Update: ${now}`, canvas.width / 2, 48);
+            
+            // 資源數據
+            const resources = [
+                { name: 'CPU Usage', value: Math.floor(Math.random() * 40) + 30, unit: '%' },
+                { name: 'Memory', value: Math.floor(Math.random() * 30) + 60, unit: '%' },
+                { name: 'Disk I/O', value: Math.floor(Math.random() * 50) + 20, unit: '%' },
+                { name: 'Network', value: Math.floor(Math.random() * 40) + 10, unit: 'Mbps' }
+            ];
+            
+            const startY = 85;
+            const barHeight = 35;
+            const gap = 20;
+            const barMaxWidth = 380;
+            const labelWidth = 120;
+            const startX = 50;
+            
+            ctx.textAlign = 'left';
+            resources.forEach((resource, i) => {
+                const y = startY + (i * (barHeight + gap));
+                
+                // 資源名稱
+                ctx.fillStyle = theme.text;
+                ctx.font = '14px system-ui, -apple-system, sans-serif';
+                ctx.fillText(resource.name, startX, y + 20);
+                
+                // 進度條背景
+                const barX = startX + labelWidth;
+                ctx.fillStyle = theme.bgAlt;
+                ctx.fillRect(barX, y, barMaxWidth, barHeight);
+                
+                // 進度條邊框
+                ctx.strokeStyle = theme.border;
+                ctx.lineWidth = 1;
+                ctx.strokeRect(barX, y, barMaxWidth, barHeight);
+                
+                // 進度條填充
+                const fillColor = resource.value > 80 ? theme.error : 
+                                 resource.value > 60 ? theme.warning : theme.success;
+                const fillWidth = (barMaxWidth - 2) * Math.min(resource.value, 100) / 100;
+                
+                // 漸層效果
+                const gradient = ctx.createLinearGradient(barX, 0, barX + fillWidth, 0);
+                gradient.addColorStop(0, fillColor);
+                gradient.addColorStop(1, fillColor + '88');
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(barX + 1, y + 1, fillWidth, barHeight - 2);
+                
+                // 百分比文字（在進度條內）
+                ctx.fillStyle = resource.value > 50 ? theme.bg : theme.text;
+                ctx.font = 'bold 14px system-ui, -apple-system, sans-serif';
+                ctx.textAlign = 'center';
+                const percentage = resource.unit === '%' ? `${resource.value}%` : `${resource.value} ${resource.unit}`;
+                ctx.fillText(percentage, barX + barMaxWidth/2, y + barHeight/2 + 5);
+            });
+            
+            ctx.textAlign = 'left';
+        }
+        
+        // 效果 C: Mini Dashboard
+        function refreshMiniDash() {
+            const canvas = document.getElementById('mini-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 背景
+            ctx.fillStyle = theme.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 邊框
+            ctx.strokeStyle = theme.border;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+            
+            // 生成隨機數據
+            const cpu = Math.floor(Math.random() * 40) + 30;
+            const memory = Math.floor(Math.random() * 30) + 60;
+            const disk = Math.floor(Math.random() * 50) + 20;
+            const isHealthy = cpu < 80 && memory < 90 && disk < 80;
+            
+            // 標題背景
+            ctx.fillStyle = theme.bgAlt;
+            ctx.fillRect(2, 2, canvas.width - 4, 35);
+            
+            // 標題
+            ctx.fillStyle = theme.text;
+            ctx.font = 'bold 16px monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText('📊 Quick Stats', 20, 26);
+            
+            // 資源狀態
+            const metrics = [
+                { label: 'CPU', value: cpu },
+                { label: 'Memory', value: memory },
+                { label: 'Disk', value: disk }
+            ];
+            
+            ctx.font = '14px monospace';
+            metrics.forEach((metric, i) => {
+                const y = 70 + (i * 35);
+                
+                // 標籤
+                ctx.fillStyle = theme.textSecondary;
+                ctx.fillText(metric.label.padEnd(7) + ':', 20, y);
+                
+                // 迷你進度條
+                const blocks = Math.floor(metric.value / 20);
+                for (let j = 0; j < 5; j++) {
+                    if (j < blocks) {
+                        ctx.fillStyle = metric.value > 80 ? theme.error : 
+                                       metric.value > 60 ? theme.warning : theme.success;
+                        ctx.fillRect(120 + j * 25, y - 10, 20, 12);
+                    } else {
+                        ctx.strokeStyle = theme.border;
+                        ctx.strokeRect(120 + j * 25, y - 10, 20, 12);
+                    }
+                }
+                
+                // 百分比
+                ctx.fillStyle = metric.value > 80 ? theme.error : theme.text;
+                ctx.font = 'bold 14px monospace';
+                ctx.textAlign = 'right';
+                ctx.fillText(`${metric.value}%`, 300, y);
+                ctx.textAlign = 'left';
+                ctx.font = '14px monospace';
+            });
+            
+            // 底部狀態欄
+            ctx.fillStyle = isHealthy ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+            ctx.fillRect(2, 175, canvas.width - 4, 40);
+            
+            // 狀態指示
+            ctx.fillStyle = theme.textSecondary;
+            ctx.font = '14px system-ui, -apple-system, sans-serif';
+            ctx.fillText('Status:', 20, 197);
+            
+            ctx.fillStyle = isHealthy ? theme.success : theme.error;
+            ctx.font = 'bold 14px system-ui, -apple-system, sans-serif';
+            ctx.fillText(isHealthy ? '✅ Healthy' : '⚠️ Warning', 80, 197);
+        }
+        
+        // 效果 D: API Performance Bar Chart （改為長條圖）
+        function refreshChart() {
+            const canvas = document.getElementById('chart-canvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // 背景
+            ctx.fillStyle = theme.bg;
+            ctx.fillRect(0, 0, width, height);
+            
+            // 生成不同 API 的效能數據
+            const apis = [
+                { name: 'GET /users', time: Math.floor(Math.random() * 50) + 30 },
+                { name: 'POST /users', time: Math.floor(Math.random() * 60) + 60 },
+                { name: 'GET /posts', time: Math.floor(Math.random() * 100) + 150 },
+                { name: 'PUT /posts', time: Math.floor(Math.random() * 80) + 120 },
+                { name: 'DELETE /posts', time: Math.floor(Math.random() * 40) + 80 },
+                { name: 'GET /comments', time: Math.floor(Math.random() * 30) + 40 },
+                { name: 'POST /auth', time: Math.floor(Math.random() * 150) + 200 },
+                { name: 'GET /search', time: Math.floor(Math.random() * 200) + 250 }
+            ];
+            
+            // 使用 D3.js 設定比例尺
+            const margin = { top: 50, right: 40, bottom: 80, left: 80 };
+            const innerWidth = width - margin.left - margin.right;
+            const innerHeight = height - margin.top - margin.bottom;
+            
+            const xScale = d3.scaleBand()
+                .domain(apis.map(d => d.name))
+                .range([margin.left, width - margin.right])
+                .padding(0.3);
+            
+            const yScale = d3.scaleLinear()
+                .domain([0, 500])
+                .range([height - margin.bottom, margin.top]);
+            
+            // 標題
+            ctx.fillStyle = theme.text;
+            ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('API Performance Comparison (ms)', width / 2, 30);
+            
+            // 網格線
+            ctx.strokeStyle = theme.grid;
+            ctx.lineWidth = 0.5;
+            ctx.setLineDash([2, 2]);
+            
+            [100, 200, 300, 400, 500].forEach(value => {
+                ctx.beginPath();
+                ctx.moveTo(margin.left, yScale(value));
+                ctx.lineTo(width - margin.right, yScale(value));
+                ctx.stroke();
+            });
+            
+            ctx.setLineDash([]);
+            
+            // 坐標軸
+            ctx.strokeStyle = theme.border;
+            ctx.lineWidth = 2;
+            
+            // X軸
+            ctx.beginPath();
+            ctx.moveTo(margin.left, height - margin.bottom);
+            ctx.lineTo(width - margin.right, height - margin.bottom);
+            ctx.stroke();
+            
+            // Y軸
+            ctx.beginPath();
+            ctx.moveTo(margin.left, margin.top);
+            ctx.lineTo(margin.left, height - margin.bottom);
+            ctx.stroke();
+            
+            // 繪製長條圖
+            apis.forEach((api, i) => {
+                const x = xScale(api.name);
+                const barWidth = xScale.bandwidth();
+                const barHeight = height - margin.bottom - yScale(api.time);
+                
+                // 長條顏色（根據效能）
+                let barColor;
+                if (api.time < 100) {
+                    barColor = theme.success;
+                } else if (api.time < 300) {
+                    barColor = theme.warning;
+                } else {
+                    barColor = theme.error;
+                }
+                
+                // 漸層效果
+                const gradient = ctx.createLinearGradient(0, yScale(api.time), 0, height - margin.bottom);
+                gradient.addColorStop(0, barColor);
+                gradient.addColorStop(1, barColor + '66');
+                
+                // 繪製長條
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x, yScale(api.time), barWidth, barHeight);
+                
+                // 長條邊框
+                ctx.strokeStyle = barColor;
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x, yScale(api.time), barWidth, barHeight);
+                
+                // 數值標籤（在長條上方）
+                ctx.fillStyle = theme.text;
+                ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${api.time}ms`, x + barWidth/2, yScale(api.time) - 5);
+                
+                // X軸標籤（旋轉）
+                ctx.save();
+                ctx.translate(x + barWidth/2, height - margin.bottom + 10);
+                ctx.rotate(-Math.PI/4);
+                ctx.fillStyle = theme.textSecondary;
+                ctx.font = '11px system-ui, -apple-system, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(api.name, 0, 0);
+                ctx.restore();
+            });
+            
+            // Y軸標籤
+            ctx.fillStyle = theme.textSecondary;
+            ctx.font = '12px system-ui, -apple-system, sans-serif';
+            ctx.textAlign = 'right';
+            [0, 100, 200, 300, 400, 500].forEach(value => {
+                ctx.fillText(`${value}`, margin.left - 10, yScale(value) + 4);
+            });
+            
+            // Y軸標題
+            ctx.save();
+            ctx.translate(20, height/2);
+            ctx.rotate(-Math.PI/2);
+            ctx.fillStyle = theme.text;
+            ctx.font = '14px system-ui, -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Response Time (ms)', 0, 0);
+            ctx.restore();
+            
+            // 圖例
+            const legendY = height - 25;
+            const legendItems = [
+                { label: 'Fast (<100ms)', color: theme.success },
+                { label: 'Normal (100-300ms)', color: theme.warning },
+                { label: 'Slow (>300ms)', color: theme.error }
+            ];
+            
+            let legendX = width/2 - 150;
+            legendItems.forEach(item => {
+                ctx.fillStyle = item.color;
+                ctx.fillRect(legendX, legendY - 8, 12, 12);
+                
+                ctx.fillStyle = theme.textSecondary;
+                ctx.font = '11px system-ui, -apple-system, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText(item.label, legendX + 16, legendY);
+                
+                legendX += ctx.measureText(item.label).width + 30;
+            });
+        }
+        
+        // 頁面載入時初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            refreshDashboard();
+            refreshResources();
+            refreshMiniDash();
+            refreshChart();
+        });
+    </script>
+</body>
+</html>

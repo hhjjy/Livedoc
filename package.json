@@ -1,0 +1,52 @@
+{
+  "name": "livedoc-cli",
+  "version": "2.1.0",
+  "description": "LiveDoc - Dynamic diagram server for Markdown documentation",
+  "main": "src/server/app.js",
+  "bin": {
+    "livedoc": "./bin/livedoc.js"
+  },
+  "scripts": {
+    "start": "node bin/livedoc.js start",
+    "test": "jest",
+    "lint": "eslint src/",
+    "prepublishOnly": "npm test"
+  },
+  "keywords": [
+    "documentation",
+    "plantuml",
+    "mermaid",
+    "markdown",
+    "diagrams",
+    "kroki",
+    "d2",
+    "nomnoml",
+    "speckit"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "commander": "^11.0.0",
+    "detect-port": "^1.5.1",
+    "mime-types": "^2.1.35"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "supertest": "^6.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hhjjy/Livedoc.git"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "templates/",
+    "README.md",
+    "LICENSE"
+  ]
+}

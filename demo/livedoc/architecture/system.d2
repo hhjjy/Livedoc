@@ -1,0 +1,25 @@
+# System Architecture
+direction: right
+
+users: Users {
+  shape: person
+}
+
+frontend: Frontend {
+  shape: rectangle
+  style.fill: "#d4e8ff"
+}
+
+backend: Backend API {
+  shape: rectangle
+  style.fill: "#ffe4d4"
+}
+
+database: Database {
+  shape: cylinder
+  style.fill: "#d4ffe4"
+}
+
+users -> frontend: HTTP
+frontend -> backend: REST API
+backend -> database: SQL

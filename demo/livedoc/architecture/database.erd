@@ -1,0 +1,21 @@
+[users] {bgcolor: "#d0e0d0"}
+  *id {label: "int, not null"}
+  username {label: "varchar, not null"}
+  email {label: "varchar, not null"}
+
+[posts] {bgcolor: "#ececfc"}
+  *id {label: "int, not null"}
+  +user_id {label: "int, not null"}
+  title {label: "varchar, not null"}
+  content {label: "text"}
+  created_at {label: "timestamp"}
+
+[comments] {bgcolor: "#fcecec"}
+  *id {label: "int, not null"}
+  +post_id {label: "int, not null"}
+  +user_id {label: "int, not null"}
+  content {label: "text"}
+
+users 1--* posts
+users 1--* comments
+posts 1--* comments
